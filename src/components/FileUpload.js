@@ -5,17 +5,18 @@ import Card from '@material-ui/core/Card';
 import CardContent from '@material-ui/core/CardContent';
 import Typography from '@material-ui/core/Typography';
 import Button from '@material-ui/core/Button';
+import Link from '@material-ui/core/Link';
 import Divider from '@material-ui/core/Divider';
-import DescriptionIcon from '@material-ui/icons/Description';
-import FormHelperText from '@material-ui/core/FormHelperText';
 import CompareIcon from '@material-ui/icons/Compare';
-
+import axios from 'axios';
+import fileDownload from 'js-file-download'
 
 function FileUpload(props) {
 
     const [selectedFile, setSelectedFile] = useState({file1: null, file2: null});
     const [errorSelectedFile, setErrorSelectedFile] = useState({file1: [false, ""], file2: [false, ""]});
-    const [disableExecute, setDisableExecute] = useState({file1: true, file2: true});
+    const [executedResult, setExecutedResult] = useState({error: [false, ""], success: [false, ""]});
+    const [executedFile, setExecutedFile] = useState({fileName:null, filePath:null, fileSize:null, fileSizeMetric:null});
 
     const onFileChange = (fileIndex) => e => {
         console.log("file is uploading: ", fileIndex);
@@ -30,14 +31,55 @@ function FileUpload(props) {
             console.log("file type not passed");
             setErrorSelectedFile(prevState => ({
                 ...prevState,
-                [fileIndex]: [true, "File type not passed"]
+                [fileIndex]: [true, "This file type is not allowed"]
             }));
         } else {
             console.log("File type passed");
         }
     }
     const onFileUpload = () => {
+        if(!selectedFile["file1"] && !selectedFile["file2"]){
+            setExecutedResult({error: [true, "Please Select the files"], success: [false, ""]});
+        } else {
+            // create an object of form data
+            const formData = new FormData();
+            // append the first file
+            formData.append(
+                "file1",
+                selectedFile["file1"],
+                selectedFile["file1"].name
+            );
+            // append the second file
+            formData.append(
+                "file2",
+                selectedFile["file2"],
+                selectedFile["file2"].name
+            );
+            let url = "http://localhost:8000/upload_files"
+            axios.post(url, formData, { 
+            })
+            .then(res => {
+                console.warn("------Returned Result-------", res);
+                setExecutedResult({success: [true, "File Executed successfully!"], error:[false, ""]});
+                let result = res.data
+                setExecutedFile({
+                    fileName:result.file_name, 
+                    filePath:result.file_path, 
+                    fileSize:result.file_size, 
+                    fileSizeMetric:result.file_size_metric
+                });
+            });  
+        }
+    }
 
+    const downloadFile = () => {
+        let url = "http://localhost:8000/download_file?file_path="+executedFile["filePath"]
+        axios.get(url, {
+            responseType: 'blob', // Important
+        })
+        .then((response) => {
+            fileDownload(response.data, executedFile["fileName"]);
+        });
     }
 
   return(
@@ -47,7 +89,7 @@ function FileUpload(props) {
             <Grid item xs={4}>
                 <Card className={props.classes.fileUpload}>
                     <CardContent>
-                        <Typography variant="h6" align="center" className={props.classes.fileUploadHeader}>
+                        <Typography variant="h6" align="center" className={props.classes.info}>
                             File 1
                         </Typography>
                         <Divider light={true} />   
@@ -70,17 +112,23 @@ function FileUpload(props) {
                             </Box>
                             {selectedFile["file1"] && (
                                 <Box>
-                                    <Box pt={1} color="#b9bdc1">
-                                    <Typography variant="body1">File Name: </Typography><Typography variant="caption">{selectedFile["file1"]?.name}</Typography>                        
+                                    <Box pt={1} className={props.classes.info}>
+                                        <Typography variant="body1">File Name: </Typography>
+                                        <Typography variant="caption">{selectedFile["file1"]?.name}</Typography>                        
                                     </Box>
-                                    <Box pt={1} color="#b9bdc1">
-                                        <Typography variant="body1">File Type: </Typography><Typography variant="caption">{selectedFile["file1"]?.type}</Typography>
+                                    <Box pt={1} className={props.classes.info}>
+                                        <Typography variant="body1">File Type: </Typography>
+                                        <Typography variant="caption">{selectedFile["file1"]?.type}</Typography>
                                     </Box>
                                 </Box>
                             )} 
                             {errorSelectedFile["file1"][0] && (
-                                <Box pt={1}>
-                                    <FormHelperText error={true}>{errorSelectedFile["file1"][1]}</FormHelperText>
+                                <Box align="center" pt={1}>
+                                    <Typography 
+                                        variant="caption" 
+                                        color="error"
+                                    >{errorSelectedFile["file1"][1]}
+                                    </Typography>
                                 </Box>
                             )}
                         </Box>
@@ -93,8 +141,11 @@ function FileUpload(props) {
             <Grid item xs={4}>
                 <Card className={props.classes.fileUpload}>
                     <CardContent>
-                        <Typography variant="h6" align="center" className={props.classes.fileUploadHeader}>
-                            File 2
+                        <Typography 
+                            variant="h6" 
+                            align="center" 
+                            className={props.classes.info}
+                        >File 2
                         </Typography>
                         <Divider />
                         <Box align="center" pt={10}>
@@ -116,17 +167,23 @@ function FileUpload(props) {
                             </Box>
                             {selectedFile["file2"] && (
                                 <Box>
-                                    <Box pt={1} color="#b9bdc1">
-                                    <Typography variant="body1">File Name: </Typography><Typography variant="caption">{selectedFile["file2"]?.name}</Typography>                        
+                                    <Box pt={1} className={props.classes.info}>
+                                        <Typography variant="body1">File Name: </Typography>
+                                        <Typography variant="caption">{selectedFile["file2"]?.name}</Typography>                        
                                     </Box>
-                                    <Box pt={1} color="#b9bdc1">
-                                        <Typography variant="body1">File Type: </Typography><Typography variant="caption">{selectedFile["file2"]?.type}</Typography>
+                                    <Box pt={1} className={props.classes.info}>
+                                        <Typography variant="body1">File Type: </Typography>
+                                        <Typography variant="caption">{selectedFile["file2"]?.type}</Typography>
                                     </Box>
                                 </Box>
                             )} 
                             {errorSelectedFile["file2"][0] && (
-                                <Box pt={1}>
-                                    <FormHelperText error={true}>{errorSelectedFile["file2"][1]}</FormHelperText>
+                                <Box align="center" pt={1}>
+                                    <Typography 
+                                        variant="caption" 
+                                        color="error"
+                                    >{errorSelectedFile["file2"][1]}
+                                    </Typography>
                                 </Box>
                             )}
                         </Box>
@@ -143,9 +200,51 @@ function FileUpload(props) {
                 color="secondary"
                 style={{width:150, fontSize:15}}
                 endIcon={<CompareIcon />}
+                onClick={onFileUpload}
             >Execute
             </Button>
         </Box>
+        
+
+        {executedResult["error"][0] && (
+            <Box align="center" pt={2}>
+                <Typography 
+                    variant="body2"
+                    color="error"
+                >{executedResult["error"][1]}
+                </Typography>
+            </Box>
+        )}
+
+        {executedResult["success"][0] && (
+            <Box align="center" pt={2}>
+                <Box>
+                    <Typography 
+                        variant="body2"
+                        className={props.classes.success} 
+                    >{executedResult["success"][1]}
+                    </Typography>
+                </Box>
+
+                <Box>
+                    <Typography 
+                        variant="h6"
+                        className={props.classes.info} 
+                    >{executedFile["fileName"]}&nbsp;({executedFile["fileSize"]}{executedFile["fileSizeMetric"]})
+                    </Typography>
+                </Box>
+
+                <Box>
+                    <Link
+                        component="button"
+                        variant="body1"
+                        color="secondary"
+                        onClick={downloadFile}
+                    >Download
+                    </Link>
+                </Box>
+            </Box>
+        )}
     </Box>
     )
 }
